@@ -1,0 +1,16 @@
+{
+  "name": "My Progressive Web App",
+  "short_name": "PWA",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay"
+  ],
+  "theme_color": "#254B85",
+  "start_url": "./index.html",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192"
+    }
+  ]
+}

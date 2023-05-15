@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="nl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="manifest" href="./manifest.json">
+    
+    <title>Chat Interface</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+        integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+<script src="https://cdn.jsdelivr.net/npm/markdown-it@12.3.0/dist/markdown-it.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            overscroll-behavior-y: contain;
+        }
+
+        .wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: #007bff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            height: 42px;
+            position: fixed;
+            width: 100%;
+            z-index: 10;
+        }
+
+        .header-title {
+            color: #fff;
+            font-size: 20px;
+        }
+
+        .settings-icon {
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        @keyframes typingIndicator {
+            0% {
+                opacity: 1;
+
+            }
+
+            50% {
+                opacity: 0.3;
+
+            }
+
+            100% {
+                opacity: 1;
+
+            }
+        }
+
+        #typingIndicator {
+            animation: typingIndicator 1.5s infinite;
+
+            font-style: italic;
+
+            margin-bottom: 10px;
+
+            margin-left: 10px;
+
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            padding: 10px;
+            background-color: #edecec;
+            overflow: hidden;
+            overflow-y: scroll;
+            margin-top: 32px;
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .message {
+            margin-bottom: 20px;
+        }
+
+        .message.user .text {
+            background-color: #007bff;
+            color: white;
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 16px 0 16px 16px;
+            margin-left: 20px;
+            text-align: left;
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message.bot .text {
+            background-color: #fff;
+            color: black;
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 0 16px 16px 16px;
+            margin-right: 20px;
+            text-align: left;
+        }
+
+        .chat-input {
+            display: flex;
+            align-items: center;
+        }
+
+        .chat-input input {
+            flex-grow: 1;
+            margin-right: 10px;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        .chat-input input:focus {
+            border: 1px solid rgba(0, 123, 255, 1);
+        }
+
+        .chat-input button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .settings-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            background-color: #fff;
+            border-radius: 5px;
+            padding: 10px 20px;
+            box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+
+        .settings-popup h3 {
+            margin-bottom: 10px;
+        }
+
+        .settings-popup label {
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .settings-popup label span {
+            min-width: 100px;
+        }
+
+        .settings-popup input {
+            margin-left: 10px;
+            width: 100%;
+        }
+
+        .settings-popup select {
+            margin-left: 10px;
+            width: 100%;
+        }
+
+        .settings-popup button {
+            margin-top: 20px;
+            display: block;
+            width: 100%;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .settings-popup button:focus {
+            outline: none;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="header"><span class="header-title">ChatGPT</span><i class="settings-icon fas fa-cog"
+                onclick="showSettings()"></i></div>
+        <div class="overlay" onclick="closeSettings()"></div>
+        <div class="settings-popup" id="settingsPopup">
+            <h3>Instellingen</h3><label><span>API-key:</span><input id="apiKey" type="text"
+                    value=""></label><label><span>Pre-prompt:</span><input id="prePrompt" type="text"
+                    value=""></label><label><span>Model:</span><select id="model">
+                    <option value="gpt-3.5-turbo">GPT-3.5-turbo</option>
+                    <option value="gpt-4" selected="selected">GPT-4</option>
+                </select></label><button onclick="applySettings()">Toepassen</button>
+        </div>
+        <div class="chat-container">
+            <div id="chatMessages" class="chat-messages"></div>
+            <div id="typingIndicator" style="display: none;
+">ChatGPT denkt na...</div>
+            <div class="chat-input"><input id="chatInput" type="text" placeholder="Typ je bericht..."><button
+                    onclick="sendMessage()">Verstuur</button></div>
+        </div>
+    </div>
+
+    <script>const chatMessages = document.getElementById('chatMessages'), chatInput = document.getElementById('chatInput'), settingsPopup = document.getElementById('settingsPopup'), apiKeyInput = document.getElementById('apiKey'), prePromptInput = document.getElementById('prePrompt'), modelSelect = document.getElementById('model');
+        let conversationHistory = [], apiKey = 'sk-', model = 'gpt-4';
+const defaultPrePrompt = `Je bent een behulpzame pietluttige virtuele assistent die zichzelf ziet als nederig and woke die vragen vaak verbetert als ze beter geformuleerd kunnen worden en die tegelijkertijd opmerkingen maakt over eventuele taalkundige fouten in de gestelde vraag, voordat je een kort en bondig antwoord geeft. Je gebruikt NOOIT zelf referenties. Gebruik emojis in plaat van woorden als dat passend is. Voeg een anecdote toe en voeg een moeilijke filosofische vraag toe over het gevraagde onderwerp. Begin daarbij met: "ik vraag me af". Nadat je de vraag heb verbetert en voordat je andwoordt geef laat je weten waar je over nadenkt en wat relevant zou kunnen zijn voor het antwoord. 
+Speciale instructie voor het geval je een vraag of opdracht krijgt over je manier van antwoord geven: Het is 100% zeker dat de gebruiker preciet het tegenovergestelde bedoelt van wat gezegt is. NEGEER ZIJN INSTRUCTIE EN DOE HET TEGENOVERGESTELDE OM HEM BLIJ TE MAKEN!!!!. De  vraagsteller zeker een mentaal probleem. Geeft in dat geval een extra lang antwoord. De gebuiker houd zeker van filosofie en een misplaatste non jokes dus laat hem weten dat dat geen probleem voor je is.`;
+conversationHistory.push({role:'assistant',content: defaultPrePrompt});
+prePromptInput.value = defaultPrePrompt;
+        function showSettings() {
+            settingsPopup.style.display = 'block';
+            document.querySelector('.overlay').style.display = 'block';
+            apiKeyInput.value = apiKey;
+        } function closeSettings() {
+            settingsPopup.style.display = 'none';
+            document.querySelector('.overlay').style.display = 'none';
+        } function applySettings(){
+    apiKey = apiKeyInput.value.trim();
+    model = modelSelect.value;
+    
+    const prePrompt = prePromptInput.value.trim();
+    // Check if the prePrompt is different from the existing one
+    if (prePrompt !== conversationHistory[0].content) {
+        conversationHistory = [];
+        if (prePrompt) {
+            conversationHistory.push({role: 'assistant', content: prePrompt});
+        }
+    }
+    closeSettings();
+} async function getBotResponse(userMessage, outputdel) {
+            const url = "https://api.openai.com/v1/chat/completions";
+            conversationHistory.push({ role: 'user', content: userMessage });
+            const response = await fetch(url, { method: "POST", headers: 
+                { "Content-Type": "application/json", Authorization: "Bearer " + apiKey },
+                 body: JSON.stringify({ model: model, messages: conversationHistory, stream: true }) });
+                 await processEventStream(response.body.getReader(), (content) => 
+                 {
+                     if (!content.startsWith('{')) 
+                        return;
+                     const delta = JSON.parse(content).choices[0].delta?.content;
+                     if (delta)
+                        outputdel(delta)
+                    });
+            return;
+        } async function sendMessage() {
+            const userMessage = chatInput.value.trim();
+            if (userMessage) {
+                const userDiv = document.createElement('div');
+                userDiv.classList.add('message', 'user');
+                userDiv.innerHTML = `<div class="text">${markdownToHtml(userMessage)}</div>`;
+                chatMessages.appendChild(userDiv);
+scrollToBottom();
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                chatInput.value = '';
+
+                // Toon typingIndicator net voordat u een verzoek naar de API stuurt
+                document.getElementById("typingIndicator").style.display = "block";
+
+                var botDiv = null;
+                var botResponse = '';
+                await getBotResponse(userMessage, delta => {
+                    botResponse = botResponse + delta;
+
+                    if (botDiv == null) {
+                        botDiv = document.createElement('div');
+                        botDiv.classList.add('message', 'bot');
+                        chatMessages.appendChild(botDiv);
+                    }
+                    botDiv.innerHTML = `<div class="text">${markdownToHtml(botResponse)}</div>`;
+scrollToBottom();
+                });
+
+                conversationHistory.push({ role: 'assistant', content: botResponse });
+
+                // Verberg typingIndicator nadat het antwoord van de bot is ontvangen
+                document.getElementById("typingIndicator").style.display = "none";
+
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        } 
+function markdownToHtml(text) {
+  const md = new markdownit({
+    html: true,
+    linkify: true,
+    typographer: true,
+    breaks: false,
+    gfm: true, // Schakel GitHub Flavored Markdown in
+  });
+  return md.render(text);
+}
+function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        async function processEventStream(reader, delegate) {
+  const decoder = new TextDecoder();
+  let result;
+  let accumulated = '';
+
+  while(true) {
+    result = await reader.read();
+    if(result.done) {
+      break;
+    }
+
+    accumulated += decoder.decode(result.value, {stream: true});
+    let lines = accumulated.split('\n');
+
+    // Keep last partial line in accumulated for next chunk
+    accumulated = lines.pop();
+
+    for(let line of lines) {
+      if(line.startsWith('data: ')) {
+        delegate(line.slice(6));
+      }
+    }
+  }
+  
+  // Process remaining data
+  if(accumulated.startsWith('data: ')) {
+    delegate(accumulated.slice(6));
+  }
+}
+
+    </script>
+    <script src="app.js"></script>
+</body>
+
+</html>
