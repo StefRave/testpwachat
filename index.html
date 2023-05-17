@@ -212,7 +212,7 @@
 
         .settings-popup textarea {
             min-height: 100px;
-            resize: vertical;   
+            resize: vertical;
         }
 
         .settings-popup button {
@@ -253,7 +253,10 @@
             <h3>Instellingen</h3>
             <label>
                 <span>API-key:</span>
-                <input id="apiKey" type="text" value="">
+                <div style="display: flex; position: relative;">
+                    <input id="apiKey" type="password" value="">
+                    <button id="toggleApiKeyVisibility" type="button" style="margin: 0px; padding: 0px; width: 20px; right: 0; background: none; border: none; ">👁️</button>
+                </div>
             </label>
             <label>
                 <span>Pre-prompt:</span>
@@ -277,7 +280,7 @@
         </div>
     </div>
 
-    <script>const chatMessages = document.getElementById('chatMessages'), chatInput = document.getElementById('chatInput'), settingsPopup = document.getElementById('settingsPopup'), apiKeyInput = document.getElementById('apiKey'), prePromptInput = document.getElementById('prePrompt'), modelSelect = document.getElementById('model');
+    <script>const chatMessages = document.getElementById('chatMessages'), chatInput = document.getElementById('chatInput'), settingsPopup = document.getElementById('settingsPopup'), apiKeyInput = document.getElementById('apiKey'), prePromptInput = document.getElementById('prePrompt'), modelSelect = document.getElementById('model'), visibilityButton = document.getElementById('toggleApiKeyVisibility');
         var config = {
             apiKey: 'sk-',
             model: 'gpt-4',
@@ -303,8 +306,19 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
         apiKeyInput.value = config.apiKey;
         modelSelect.value = config.model;
 
+        visibilityButton.addEventListener('click', () => {
+            if (apiKeyInput.type === 'password') {
+                apiKeyInput.type = 'text';
+                visibilityButton.textContent = '🙈';
+            } else {
+                apiKeyInput.type = 'password';
+                visibilityButton.textContent = '👁️';
+            }
+        });
+
         function showSettings() {
             settingsPopup.style.display = 'block';
+            apiKeyInput.type = 'password';
             document.querySelector('.overlay').style.display = 'block';
         } function closeSettings() {
             settingsPopup.style.display = 'none';
