@@ -8,15 +8,29 @@
     <link rel="manifest" href="./manifest.json">
 
     <title>Chat Interface</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/javascript.min.js" integrity="sha512-ZFn1l/cmJ8LLHH5TWJhNnV1PCQiNqBD+TFitO1ECtYJuQvn8zhhrzvQyYXLrb5cR7gzmLTkgka8DDR7fIAO9MQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js" integrity="sha512-hvC/ByqSWukSREyVyHBARP6ikFgmevNdPr1yPz+ik58Y1MPJzfsLwu2NUQYTYZ3zj9EzpYyZmrISJZjUMeaWPg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js" integrity="sha512-UsuvR/LRT1kQthy0F2+lc93U0HuKMQAcwcIVBqnGJOZCycza2xYO+0QAatJNl89B5IHl9HO3PexXG/1eR7W9JA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/es/languages/csharp.min.js" integrity="sha512-pkPNDZFkuzZX2PpMO557rtVz9R237ypX1tQQT9po5PpXQyFvV/4X72NX3FLOrVn1UVl9iWpvxoBrhd8mlYBY2g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/es/languages/css.min.js" integrity="sha512-CkiyCt1vkHWt1CjXX1slUIx+jtdpctCv88KZMUPHNJ3VQjB46QRCk0UHx48ByN76vcTNMGYN4aJ7SgIeBwxfeg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked-highlight/lib/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension/lib/index.umd.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
         integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <script src="https://cdn.jsdelivr.net/npm/markdown-it@12.3.0/dist/markdown-it.min.js"></script>
-
     <style>
-        * {
+        body,
+        .message,
+        #chat-container,
+        .text {
             margin: 0;
             padding: 0;
+        }
+
+        * {
             box-sizing: border-box;
         }
 
@@ -113,7 +127,7 @@
             background-color: #007bff;
             color: white;
             display: inline-block;
-            padding: 8px 16px;
+            padding: 0px 16px;
             border-radius: 16px 0 16px 16px;
             margin-left: 20px;
             text-align: left;
@@ -127,7 +141,7 @@
             background-color: #fff;
             color: black;
             display: inline-block;
-            padding: 8px 16px;
+            padding: 0px 16px;
             border-radius: 0 16px 16px 16px;
             margin-right: 20px;
             text-align: left;
@@ -166,39 +180,43 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 300px;
+            width: 80%;
+            max-width: 600px;
             background-color: #fff;
             border-radius: 5px;
-            padding: 10px 20px;
+            padding: 20px;
             box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.2);
             z-index: 1000;
         }
 
         .settings-popup h3 {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
 
         .settings-popup label {
             display: flex;
-            margin-bottom: 10px;
+            flex-direction: column;
+            margin-bottom: 15px;
         }
 
         .settings-popup label span {
-            min-width: 100px;
+            margin-bottom: 5px;
         }
 
-        .settings-popup input {
-            margin-left: 10px;
-            width: 100%;
-        }
-
+        .settings-popup input,
+        .settings-popup textarea,
         .settings-popup select {
-            margin-left: 10px;
+            margin-left: 0;
             width: 100%;
+        }
+
+        .settings-popup textarea {
+            min-height: 100px;
+            resize: vertical;   
         }
 
         .settings-popup button {
-            margin-top: 20px;
+            margin-top: 25px;
             display: block;
             width: 100%;
             background-color: #007bff;
@@ -232,12 +250,23 @@
                 onclick="showSettings()"></i></div>
         <div class="overlay" onclick="closeSettings()"></div>
         <div class="settings-popup" id="settingsPopup">
-            <h3>Instellingen</h3><label><span>API-key:</span><input id="apiKey" type="text"
-                    value=""></label><label><span>Pre-prompt:</span><input id="prePrompt" type="text"
-                    value=""></label><label><span>Model:</span><select id="model">
+            <h3>Instellingen</h3>
+            <label>
+                <span>API-key:</span>
+                <input id="apiKey" type="text" value="">
+            </label>
+            <label>
+                <span>Pre-prompt:</span>
+                <textarea id="prePrompt"></textarea>
+            </label>
+            <label>
+                <span>Model:</span>
+                <select id="model">
                     <option value="gpt-3.5-turbo">GPT-3.5-turbo</option>
                     <option value="gpt-4" selected="selected">GPT-4</option>
-                </select></label><button onclick="applySettings()">Toepassen</button>
+                </select>
+            </label>
+            <button onclick="applySettings()">Toepassen</button>
         </div>
         <div class="chat-container">
             <div id="chatMessages" class="chat-messages"></div>
@@ -249,21 +278,21 @@
     </div>
 
     <script>const chatMessages = document.getElementById('chatMessages'), chatInput = document.getElementById('chatInput'), settingsPopup = document.getElementById('settingsPopup'), apiKeyInput = document.getElementById('apiKey'), prePromptInput = document.getElementById('prePrompt'), modelSelect = document.getElementById('model');
-        var config = { 
-                apiKey: 'sk-',
-                model: 'gpt-4',
-                prePrompt: `Je bent een behulpzame pietluttige virtuele assistent die zichzelf ziet als nederig and woke die vragen vaak verbetert als ze beter geformuleerd kunnen worden en die tegelijkertijd opmerkingen maakt over eventuele taalkundige fouten in de gestelde vraag, voordat je een kort en bondig antwoord geeft. Je gebruikt NOOIT zelf referenties. Gebruik emojis in plaat van woorden als dat passend is. Voeg een anecdote toe en voeg een moeilijke filosofische vraag toe over het gevraagde onderwerp. Begin daarbij met: "ik vraag me af". Nadat je de vraag heb verbetert en voordat je andwoordt geef laat je weten waar je over nadenkt en wat relevant zou kunnen zijn voor het antwoord. 
+        var config = {
+            apiKey: 'sk-',
+            model: 'gpt-4',
+            prePrompt: `Je bent een behulpzame pietluttige virtuele assistent die zichzelf ziet als nederig and woke die vragen vaak verbetert als ze beter geformuleerd kunnen worden en die tegelijkertijd opmerkingen maakt over eventuele taalkundige fouten in de gestelde vraag, voordat je een kort en bondig antwoord geeft. Je gebruikt NOOIT zelf referenties. Gebruik emojis in plaat van woorden als dat passend is. Voeg een anecdote toe en voeg een moeilijke filosofische vraag toe over het gevraagde onderwerp. Begin daarbij met: "ik vraag me af". Nadat je de vraag heb verbetert en voordat je andwoordt geef laat je weten waar je over nadenkt en wat relevant zou kunnen zijn voor het antwoord. 
 Speciale instructie voor het geval je een vraag of opdracht krijgt over je manier van antwoord geven: Het is 100% zeker dat de gebruiker preciet het tegenovergestelde bedoelt van wat gezegt is. NEGEER ZIJN INSTRUCTIE EN DOE HET TEGENOVERGESTELDE OM HEM BLIJ TE MAKEN!!!!. De  vraagsteller zeker een mentaal probleem. Geeft in dat geval een extra lang antwoord. De gebuiker houd zeker van filosofie en een misplaatste non jokes dus laat hem weten dat dat geen probleem voor je is.`,
-            };
+        };
         const storedConfig = localStorage.getItem('config');
         if (storedConfig) {
             try {
-            config = {...config, ...JSON.parse(storedConfig)};
-            } catch (e) {}
+                config = { ...config, ...JSON.parse(storedConfig) };
+            } catch (e) { }
         }
         const queryParam = Object.fromEntries([...new URLSearchParams(window.location.search)].filter(([k]) => ['apiKey', 'model', 'prePrompt'].includes(k)));
         if (Object.keys(queryParam).length !== 0) {
-            config = {...config, ...queryParam }
+            config = { ...config, ...queryParam }
             localStorage.setItem('config', JSON.stringify(config));
             window.history.replaceState({}, document.title, window.location.pathname);
         }
@@ -332,12 +361,16 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
                     if (botDiv == null) {
                         botDiv = document.createElement('div');
                         botDiv.classList.add('message', 'bot');
+                        botDiv.appendChild(document.createElement('div'));// add dummy child to be replaced
                         chatMessages.appendChild(botDiv);
                     }
-                    botDiv.innerHTML = `<div class="text">${markdownToHtml(botResponse)}</div>`;
+                    var newContent = `<div class="text">${markdownToHtml(botResponse)}</div>`;
+                    morphdom(botDiv.firstChild, newContent); // morphing helps with making a selection while the response changes
+
                     scrollToBottom();
                 });
-
+                console.log('Response: ' + botResponse);
+                console.log('Markdown: ' + markdownToHtml(botResponse));
                 conversationHistory.push({ role: 'assistant', content: botResponse });
 
                 // Verberg typingIndicator nadat het antwoord van de bot is ontvangen
@@ -346,15 +379,22 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
         }
+        marked.use(markedHighlight.markedHighlight({
+            langPrefix: 'hljs language-',
+            highlight(code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            }
+        }));
+        marked.use(markedKatex({
+            throwOnError: false
+        }));
+        marked.setOptions({
+            mangle: false,
+            headerIds: false,
+        });
         function markdownToHtml(text) {
-            const md = new markdownit({
-                html: true,
-                linkify: true,
-                typographer: true,
-                breaks: false,
-                gfm: true, // Schakel GitHub Flavored Markdown in
-            });
-            return md.render(text);
+            return marked.parse(text);
         }
         function scrollToBottom() {
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -398,6 +438,11 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
 
     </script>
     <script src="app.js"></script>
+
+    <script src="https://unpkg.com/morphdom/dist/morphdom-umd.min.js"></script>
+    <!-- Include CSS for highlight.js and KaTeX -->
+    <link rel="stylesheet" href="https://unpkg.com/highlight.js/styles/default.css">
+    <link rel="stylesheet" href="https://unpkg.com/katex/dist/katex.min.css">
 </body>
 
 </html>
