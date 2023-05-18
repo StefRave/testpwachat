@@ -24,14 +24,9 @@
     <style>
         body,
         .message,
-        #chat-container,
         .text {
             margin: 0;
             padding: 0;
-        }
-
-        * {
-            box-sizing: border-box;
         }
 
         html,
@@ -56,22 +51,20 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 10px;
-            height: 42px;
-            position: fixed;
             width: 100%;
-            z-index: 10;
         }
 
         .header-title {
             color: #fff;
             font-size: 20px;
+            margin: 5px 10px
         }
 
         .settings-icon {
             color: #fff;
             font-size: 24px;
             cursor: pointer;
+            margin: 5px 10px
         }
 
         @keyframes typingIndicator {
@@ -93,24 +86,25 @@
 
         #typingIndicator {
             animation: typingIndicator 1.5s infinite;
-
             font-style: italic;
-
             margin-bottom: 10px;
-
             margin-left: 10px;
 
         }
 
-        .chat-container {
+        #chat-container {
             display: flex;
             flex-direction: column;
             flex-grow: 1;
-            padding: 10px;
             background-color: #edecec;
             overflow: hidden;
             overflow-y: scroll;
-            margin-top: 32px;
+        }
+        #chat-container.responding button.chat {
+            display: none;
+        }
+        #chat-container:not(.responding) button.abort {
+            display: none;
         }
 
         .chat-messages {
@@ -132,6 +126,9 @@
             margin-left: 20px;
             text-align: left;
         }
+        .message.user ::selection {
+            background-color: #01366e;
+        }
 
         .message.user {
             text-align: right;
@@ -149,6 +146,7 @@
 
         .chat-input {
             display: flex;
+            margin: 0 10px 10px 10px;
             align-items: center;
         }
 
@@ -166,7 +164,8 @@
         }
 
         .chat-input button {
-            padding: 10px 20px;
+            height: 100%;
+            min-width: 40px;
             background-color: #007bff;
             color: white;
             border: none;
@@ -271,12 +270,13 @@
             </label>
             <button onclick="applySettings()">Toepassen</button>
         </div>
-        <div class="chat-container">
+        <div id="chat-container">
             <div id="chatMessages" class="chat-messages"></div>
             <div id="typingIndicator" style="display: none;
 ">ChatGPT denkt na...</div>
-            <div class="chat-input"><input id="chatInput" type="text" placeholder="Typ je bericht..."><button
-                    onclick="sendMessage()">Verstuur</button></div>
+            <div class="chat-input"><input id="chatInput" type="text" placeholder="Typ je bericht...">
+            <button class="abort" onclick="handleAbortClick()">Stop</button>
+            <button class="chat" onclick="handleChatClick()"><i class="fab fa-2x fa-telegram-plane"></i></button></div>
         </div>
     </div>
 
@@ -337,23 +337,49 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
                 }
             }
             closeSettings();
-        } async function getBotResponse(userMessage, outputdel) {
+        }
+        var abortControler2 = null;
+        async function getBotResponse(userMessage, outputdel) {
             const url = "https://api.openai.com/v1/chat/completions";
             conversationHistory.push({ role: 'user', content: userMessage });
-            const response = await fetch(url, {
-                method: "POST", headers:
-                    { "Content-Type": "application/json", Authorization: "Bearer " + config.apiKey },
-                body: JSON.stringify({ model: config.model, messages: conversationHistory, stream: true })
-            });
-            await processEventStream(response.body.getReader(), (content) => {
-                if (!content.startsWith('{'))
-                    return;
-                const delta = JSON.parse(content).choices[0].delta?.content;
-                if (delta)
-                    outputdel(delta)
-            });
-            return;
-        } async function sendMessage() {
+            abortControler = new AbortController();
+            try {
+                const response = await fetch(url, {
+                    signal: abortControler.signal,
+                    method: "POST", headers:
+                        { "Content-Type": "application/json", Authorization: "Bearer " + config.apiKey },
+                    body: JSON.stringify({ model: config.model, messages: conversationHistory, stream: true })
+                });
+                await processEventStream(response.body.getReader(), (content) => {
+                    if (!content.startsWith('{'))
+                        return;
+                    const delta = JSON.parse(content).choices[0].delta?.content;
+                    if (delta)
+                        outputdel(delta)
+                });
+            } catch (e) {
+                if (e.name === 'AbortError') {
+                    console.log('Fetch request was aborted');
+                    outputdel(e)
+                }
+            }
+        }
+        async function handleChatClick() {
+            var chatContainer = document.getElementById("chat-container");
+            
+            if (!chatContainer.classList.contains('responding')) {
+                chatContainer.classList.add('responding');
+                await sendMessage();
+            } else {
+                abortControler.abort();
+            }
+            chatContainer.classList.remove('responding');
+        }
+        async function handleAbortClick() {
+            abortControler.abort();
+        }
+
+        async function sendMessage() {
             const userMessage = chatInput.value.trim();
             if (userMessage) {
                 const userDiv = document.createElement('div');
@@ -370,6 +396,7 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
                 var botDiv = null;
                 var botResponse = '';
                 await getBotResponse(userMessage, delta => {
+
                     botResponse = botResponse + delta;
 
                     if (botDiv == null) {
@@ -378,9 +405,14 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
                         botDiv.appendChild(document.createElement('div'));// add dummy child to be replaced
                         chatMessages.appendChild(botDiv);
                     }
-                    var newContent = `<div class="text">${markdownToHtml(botResponse)}</div>`;
-                    morphdom(botDiv.firstChild, newContent); // morphing helps with making a selection while the response changes
-
+                    if (typeof delta == 'object') {
+                        botDiv.appendChild(document.createElement('div')).innerText = '❌';  
+                        return                      
+                    } else
+                    {
+                        var newContent = `<div class="text">${markdownToHtml(botResponse)}</div>`;
+                        morphdom(botDiv.firstChild, newContent); // morphing helps with making a selection while the response changes
+                    }
                     scrollToBottom();
                 });
                 console.log('Response: ' + botResponse);
