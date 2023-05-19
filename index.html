@@ -11,11 +11,6 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/javascript.min.js" integrity="sha512-ZFn1l/cmJ8LLHH5TWJhNnV1PCQiNqBD+TFitO1ECtYJuQvn8zhhrzvQyYXLrb5cR7gzmLTkgka8DDR7fIAO9MQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js" integrity="sha512-hvC/ByqSWukSREyVyHBARP6ikFgmevNdPr1yPz+ik58Y1MPJzfsLwu2NUQYTYZ3zj9EzpYyZmrISJZjUMeaWPg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js" integrity="sha512-UsuvR/LRT1kQthy0F2+lc93U0HuKMQAcwcIVBqnGJOZCycza2xYO+0QAatJNl89B5IHl9HO3PexXG/1eR7W9JA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/es/languages/csharp.min.js" integrity="sha512-pkPNDZFkuzZX2PpMO557rtVz9R237ypX1tQQT9po5PpXQyFvV/4X72NX3FLOrVn1UVl9iWpvxoBrhd8mlYBY2g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/es/languages/css.min.js" integrity="sha512-CkiyCt1vkHWt1CjXX1slUIx+jtdpctCv88KZMUPHNJ3VQjB46QRCk0UHx48ByN76vcTNMGYN4aJ7SgIeBwxfeg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked-highlight/lib/index.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension/lib/index.umd.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
@@ -150,16 +145,19 @@
             align-items: center;
         }
 
-        .chat-input input {
+        .chat-input textarea {
             flex-grow: 1;
             margin-right: 10px;
             padding: 10px;
             border: none;
             border-radius: 5px;
             outline: none;
+            resize: vertical; /* Allow vertical resizing */
+            overflow: auto; /* Enable scrolling when necessary */
+            min-height: 1em;
         }
 
-        .chat-input input:focus {
+        .chat-input textarea:focus {
             border: 1px solid rgba(0, 123, 255, 1);
         }
 
@@ -174,18 +172,12 @@
         }
 
         .settings-popup {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
             width: 80%;
             max-width: 600px;
             background-color: #fff;
             border-radius: 5px;
             padding: 20px;
             box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
         }
 
         .settings-popup h3 {
@@ -247,8 +239,7 @@
     <div class="wrapper">
         <div class="header"><span class="header-title">ChatGPT</span><i class="settings-icon fas fa-cog"
                 onclick="showSettings()"></i></div>
-        <div class="overlay" onclick="closeSettings()"></div>
-        <div class="settings-popup" id="settingsPopup">
+        <dialog class="settings-popup" id="settingsPopup"  onclick="var rect = this.getBoundingClientRect(); if(event.target==this && (event.clientY < rect.top || event.clientY > rect.top + rect.height || event.clientX < rect.left || event.clientX > rect.left + rect.width)) this.close()">
             <h3>Instellingen</h3>
             <label>
                 <span>API-key:</span>
@@ -269,18 +260,19 @@
                 </select>
             </label>
             <button onclick="applySettings()">Toepassen</button>
-        </div>
+        </dialog>
         <div id="chat-container">
             <div id="chatMessages" class="chat-messages"></div>
             <div id="typingIndicator" style="display: none;
 ">ChatGPT denkt na...</div>
-            <div class="chat-input"><input id="chatInput" type="text" placeholder="Typ je bericht...">
+            <div class="chat-input"><textarea id="chatInput" placeholder="Typ je bericht..."></textarea>
             <button class="abort" onclick="handleAbortClick()">Stop</button>
             <button class="chat" onclick="handleChatClick()"><i class="fab fa-2x fa-telegram-plane"></i></button></div>
         </div>
     </div>
 
     <script>const chatMessages = document.getElementById('chatMessages'), chatInput = document.getElementById('chatInput'), settingsPopup = document.getElementById('settingsPopup'), apiKeyInput = document.getElementById('apiKey'), prePromptInput = document.getElementById('prePrompt'), modelSelect = document.getElementById('model'), visibilityButton = document.getElementById('toggleApiKeyVisibility');
+        debugger;
         var config = {
             apiKey: 'sk-',
             model: 'gpt-4',
@@ -317,13 +309,10 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
         });
 
         function showSettings() {
-            settingsPopup.style.display = 'block';
+            settingsPopup.showModal();
             apiKeyInput.type = 'password';
-            document.querySelector('.overlay').style.display = 'block';
-        } function closeSettings() {
-            settingsPopup.style.display = 'none';
-            document.querySelector('.overlay').style.display = 'none';
-        } function applySettings() {
+        }
+        function applySettings() {
             config.apiKey = apiKeyInput.value.trim();
             config.model = modelSelect.value;
             config.prePrompt = prePromptInput.value.trim();
@@ -336,7 +325,7 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
                     conversationHistory.push({ role: 'assistant', content: config.prePrompt });
                 }
             }
-            closeSettings();
+            settingsPopup.close();
         }
         var abortControler2 = null;
         async function getBotResponse(userMessage, outputdel) {
@@ -446,7 +435,7 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
         chatInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
             }
