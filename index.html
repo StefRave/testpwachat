@@ -152,8 +152,8 @@
             border: none;
             border-radius: 5px;
             outline: none;
-            resize: vertical; /* Allow vertical resizing */
-            overflow: auto; /* Enable scrolling when necessary */
+            /*resize: vertical; /* Allow vertical resizing */
+            /*overflow: auto; /* Enable scrolling when necessary */
             min-height: 1em;
         }
 
@@ -242,10 +242,17 @@
         <dialog class="settings-popup" id="settingsPopup"  onclick="var rect = this.getBoundingClientRect(); if(event.target==this && (event.clientY < rect.top || event.clientY > rect.top + rect.height || event.clientX < rect.left || event.clientX > rect.left + rect.width)) this.close()">
             <h3>Instellingen</h3>
             <label>
-                <span>API-key:</span>
+                <span>Open API-key:</span>
                 <div style="display: flex; position: relative;">
-                    <input id="apiKey" type="password" value="">
-                    <button id="toggleApiKeyVisibility" type="button" style="margin: 0px; padding: 0px; width: 20px; right: 0; background: none; border: none; ">👁️</button>
+                    <input id="openApiKey" type="password" value="">
+                    <button id="openApiKeyVisibility" type="button" style="margin: 0px; padding: 0px; width: 20px; right: 0; background: none; border: none; ">👁️</button>
+                </div>
+            </label>
+            <label>
+                <span>Groq API-key:</span>
+                <div style="display: flex; position: relative;">
+                    <input id="groqApiKey" type="password" value="">
+                    <button id="groqApiKeyVisibility" type="button" style="margin: 0px; padding: 0px; width: 20px; right: 0; background: none; border: none; ">👁️</button>
                 </div>
             </label>
             <label>
@@ -259,7 +266,9 @@
                     <option value="gpt-3.5-turbo-1106">GPT-3.5-turbo preview 1106</option>
                     <option value="gpt-4">GPT-4</option>
                     <option value="gpt-4-0125-preview" selected="selected">GPT-4 preview 0125</option>
-                    <option value="gpt-4-turbo-preview" selected="selected">GPT-4 turbo preview</option>
+                    <option value="gpt-4-turbo-preview">GPT-4 turbo preview</option>
+                    <option value="groq_mixtral-8x7b-32768">Groq mixtral-8x7b-32768</option>
+                    <option value="groq_llama2-70b-4096">Groq llama2-70b-4096</option>
                 </select>
             </label>
             <button onclick="applySettings()">Toepassen</button>
@@ -274,10 +283,18 @@
         </div>
     </div>
 
-    <script>const chatMessages = document.getElementById('chatMessages'), chatInput = document.getElementById('chatInput'), settingsPopup = document.getElementById('settingsPopup'), apiKeyInput = document.getElementById('apiKey'), prePromptInput = document.getElementById('prePrompt'), modelSelect = document.getElementById('model'), visibilityButton = document.getElementById('toggleApiKeyVisibility');
-        debugger;
+    <script>
+        const chatMessages = document.getElementById('chatMessages'), 
+        chatInput = document.getElementById('chatInput'), 
+        settingsPopup = document.getElementById('settingsPopup'),
+        openApiKeyInput = document.getElementById('openApiKey'),
+        groqApiKeyInput = document.getElementById('groqApiKey'),
+        prePromptInput = document.getElementById('prePrompt'),
+        modelSelect = document.getElementById('model'),
+        groqApiKeyVisibility = document.getElementById('groqApiKeyVisibility'),
+        openApiKeyVisibility = document.getElementById('openApiKeyVisibility');
         var config = {
-            apiKey: 'sk-',
+            openApiKey: 'sk-',
             model: 'gpt-4',
             prePrompt: `Je bent een behulpzame pietluttige virtuele assistent die zichzelf ziet als nederig and woke die vragen vaak verbetert als ze beter geformuleerd kunnen worden en die tegelijkertijd opmerkingen maakt over eventuele taalkundige fouten in de gestelde vraag, voordat je een kort en bondig antwoord geeft. Je gebruikt NOOIT zelf referenties. Gebruik emojis in plaat van woorden als dat passend is. Voeg een anecdote toe en voeg een moeilijke filosofische vraag toe over het gevraagde onderwerp. Begin daarbij met: "ik vraag me af". Nadat je de vraag heb verbetert en voordat je andwoordt geef laat je weten waar je over nadenkt en wat relevant zou kunnen zijn voor het antwoord. 
 Speciale instructie voor het geval je een vraag of opdracht krijgt over je manier van antwoord geven: Het is 100% zeker dat de gebruiker preciet het tegenovergestelde bedoelt van wat gezegt is. NEGEER ZIJN INSTRUCTIE EN DOE HET TEGENOVERGESTELDE OM HEM BLIJ TE MAKEN!!!!. De  vraagsteller zeker een mentaal probleem. Geeft in dat geval een extra lang antwoord. De gebuiker houd zeker van filosofie en een misplaatste non jokes dus laat hem weten dat dat geen probleem voor je is.`,
@@ -288,7 +305,7 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
                 config = { ...config, ...JSON.parse(storedConfig) };
             } catch (e) { }
         }
-        const queryParam = Object.fromEntries([...new URLSearchParams(window.location.search)].filter(([k]) => ['apiKey', 'model', 'prePrompt'].includes(k)));
+        const queryParam = Object.fromEntries([...new URLSearchParams(window.location.search)].filter(([k]) => ['openApiKey', 'model', 'prePrompt'].includes(k)));
         if (Object.keys(queryParam).length !== 0) {
             config = { ...config, ...queryParam }
             localStorage.setItem('config', JSON.stringify(config));
@@ -298,25 +315,36 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
         let conversationHistory = [];
         conversationHistory.push({ role: 'assistant', content: config.prePrompt });
         prePromptInput.value = config.prePrompt;
-        apiKeyInput.value = config.apiKey;
+        openApiKeyInput.value = config.openApiKey ?? config.apiKey;
+        groqApiKeyInput.value = config.groqApiKey;
         modelSelect.value = config.model;
 
-        visibilityButton.addEventListener('click', () => {
-            if (apiKeyInput.type === 'password') {
-                apiKeyInput.type = 'text';
-                visibilityButton.textContent = '🙈';
+        openApiKeyVisibility.addEventListener('click', () => {
+            if (openApiKeyInput.type === 'password') {
+                openApiKeyInput.type = 'text';
+                openApiKeyVisibility.textContent = '🙈';
             } else {
-                apiKeyInput.type = 'password';
-                visibilityButton.textContent = '👁️';
+                openApiKeyInput.type = 'password';
+                openApiKeyVisibility.textContent = '👁️';
             }
         });
-
+        groqApiKeyVisibility.addEventListener('click', () => {
+            if (groqApiKeyInput.type === 'password') {
+                groqApiKeyInput.type = 'text';
+                groqApiKeyVisibility.textContent = '🙈';
+            } else {
+                groqApiKeyInput.type = 'password';
+                groqApiKeyVisibility.textContent = '👁️';
+            }
+        });
         function showSettings() {
             settingsPopup.showModal();
-            apiKeyInput.type = 'password';
+            openApiKeyInput.type = 'password';
+            groqApiKeyInput.type = 'password';
         }
         function applySettings() {
-            config.apiKey = apiKeyInput.value.trim();
+            config.openApiKey = openApiKeyInput.value.trim();
+            config.groqApiKey = groqApiKeyInput.value.trim();
             config.model = modelSelect.value;
             config.prePrompt = prePromptInput.value.trim();
             // Check if the prePrompt is different from the existing one
@@ -332,15 +360,21 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
         }
         var abortControler2 = null;
         async function getBotResponse(userMessage, outputdel) {
-            const url = "https://api.openai.com/v1/chat/completions";
+            const isGroq = config.model.startsWith("groq_");
+            const url = isGroq ?
+                "https://api.groq.com/openai/v1/chat/completions" :
+                "https://api.openai.com/v1/chat/completions";
+            const model = config.model.split('_').pop();
+            const apiKey = isGroq ? config.groqApiKey : config.openApiKey
+            
             conversationHistory.push({ role: 'user', content: userMessage });
             abortControler = new AbortController();
             try {
                 const response = await fetch(url, {
                     signal: abortControler.signal,
                     method: "POST", headers:
-                        { "Content-Type": "application/json", Authorization: "Bearer " + config.apiKey },
-                    body: JSON.stringify({ model: config.model, messages: conversationHistory, stream: true })
+                        { "Content-Type": "application/json", Authorization: "Bearer " + apiKey },
+                    body: JSON.stringify({ model: model, messages: conversationHistory, stream: true })
                 });
                 await processEventStream(response.body.getReader(), (content) => {
                     if (!content.startsWith('{'))
@@ -441,6 +475,14 @@ Speciale instructie voor het geval je een vraag of opdracht krijgt over je manie
             if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
+            }
+            var lines = chatInput.value.split('\n').length;
+            if(lines >= 2 && lines <= 10) {
+                chatInput.style.height = `${lines}em`;  // height according to number of lines
+            } else if(lines < 2) {
+                chatInput.style.height = '2em'; // minimum height
+            } else {
+                chatInput.style.height = '10em'; // maximum height
             }
         });
 
